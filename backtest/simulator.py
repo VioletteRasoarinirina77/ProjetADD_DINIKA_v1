@@ -28,7 +28,6 @@ def simuler_trades(
     multiplicateur_atr_stop_override: float | None = None,
     signaux_entree: pd.Series | None = None,
 ) -> list[dict]:
-
     """Simule les trades sur un DataFrame déjà enrichi des indicateurs.
 
     Règles :
@@ -45,7 +44,6 @@ def simuler_trades(
         ajoutée à la liste des trades. Ce choix doit être documenté
         et validé par l'encadreur.
     """
-    
     entrees = (
 generer_signaux_entree(df)
 if signaux_entree is None

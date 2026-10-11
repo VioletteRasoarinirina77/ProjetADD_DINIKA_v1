@@ -131,7 +131,7 @@ def calibrer_multiplicateur_atr(
     meilleur_sharpe = -float("inf")
     multiplicateur = obtenir_config(instrument_id).multiplicateur_contrat
 
-    
+
     signaux_train = generer_signaux_entree(train)
 
     for k_candidat in CANDIDATS_MULTIPLICATEUR_ATR:
