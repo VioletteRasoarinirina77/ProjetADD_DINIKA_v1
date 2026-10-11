@@ -1,0 +1,18 @@
+# --- Versions figées (A4) : ce sont exactement celles testées par la CI et la recette. ---
+# Toute mise à jour doit repasser par `pytest` + `ruff check .` avant d'être committée.
+pandas==3.0.2
+numpy==2.2.6
+pandas-ta==0.4.71b0
+backtesting==0.6.6
+pydantic==2.13.5
+fastapi==0.141.1
+uvicorn==0.54.0
+httpx==0.28.1
+python-dotenv==1.2.2
+pytest==9.1.1
+pytest-cov==7.1.0
+respx==0.23.1
+ruff==0.16.9
+pre-commit==4.6.2
+streamlit==1.64.0
+pyyaml==6.0.3

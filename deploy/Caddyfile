@@ -1,0 +1,10 @@
+# Reverse-proxy TLS devant l'API Piste Quant (exigence CDC : TLS).
+#
+# - DINIKA_DOMAINE=localhost (défaut, dev) : Caddy émet un certificat local
+#   auto-signé -- chiffrement réel, mais le navigateur affichera un avertissement.
+# - DINIKA_DOMAINE=quant.exemple.mg (prod) : Caddy obtient et renouvelle
+#   automatiquement un certificat Let's Encrypt (ports 80/443 joignables requis).
+{$DINIKA_DOMAINE:localhost} {
+	encode gzip
+	reverse_proxy piste-quant:8002
+}

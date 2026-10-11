@@ -1,0 +1,6 @@
+# --- Dependance LOURDE (backtest multi-instruments), NON UTILISEE par le code actuel ---
+# vectorbt entraine numba + llvmlite (~30-40 Mo a telecharger). Absente de la CI et de l'image
+# Docker (Dockerfile, .github/workflows/ci.yml) : rien dans backtest/ ou paper_trading/ ne l'importe.
+# Conservée ici pour un futur backtest multi-instruments vectorisé ; borne non figée (A4) car
+# jamais installée en pratique -- fixer une version non testée n'apporterait rien.
+vectorbt>=0.26

@@ -1,0 +1,31 @@
+name: CI - Piste Quant
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  qualite-et-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer les dépendances (légères)
+        run: pip install --default-timeout=120 --retries 5 -r requirements-core.txt
+
+      # vectorbt (lourde) n'est utilisée par aucun module ni test actuellement :
+      # étape retirée pour garder une CI rapide et fiable. La remettre le jour
+      # où le backtest multi-instruments vectorisé sera codé :
+      #   pip install -r requirements-vectorbt.txt
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Tests + couverture (objectif >= 75%)
+        run: pytest

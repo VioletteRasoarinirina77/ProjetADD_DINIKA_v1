@@ -1,0 +1,55 @@
+[project]
+name = "dinika-piste-quant"
+version = "0.1.0"
+description = "Piste Quantitatif (D2/D3/D4) — projet DINIKA"
+requires-python = ">=3.12"
+
+# --- Config de l'outil de lint/format (remplace flake8 + black + isort) ---
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+# A5 : E/W (PEP8, y compris espaces/lignes), F (erreurs), I (imports), UP (syntaxe moderne),
+# D (docstrings, exigées par le DoD) sur le code moteur uniquement (voir per-file-ignores).
+select = ["E", "W", "F", "I", "UP", "D"]
+# D203 et D211 s'excluent mutuellement (ligne vide avant docstring de classe) ; D212/D213 idem
+# (position du résumé). On choisit D211/D212 (pas de ligne vide, résumé sur la 1re ligne).
+ignore = ["D203", "D213"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# Tests, scripts d'usage manuel (`__main__`) et fixtures : pas de docstring exigée par fonction.
+"tests/*" = ["D"]
+"*/test_*.py" = ["D"]
+"conftest.py" = ["D"]
+
+# --- Config des tests ---
+[tool.pytest.ini_options]
+testpaths = ["tests", "paper_trading", "audit"]
+pythonpath = ["."]
+addopts = "-v --cov=config --cov=contracts --cov=dashboard --cov=data --cov=indicators --cov=backtest --cov=main --cov=paper_trading --cov=risk --cov=services --cov=strategy --cov=integration --cov=audit --cov=scripts --cov-report=term-missing"
+
+# --- Mesure de couverture : ne compte que le code moteur, jamais les tests eux-mêmes.
+# audit/ et paper_trading/ contiennent leurs fichiers test_*.py au même niveau que le
+# code source (pas dans tests/), donc --cov=audit --cov=scripts / --cov=paper_trading les incluait
+# par erreur dans le dénominateur : un fichier de test qui s'exécute intégralement
+# n'est pas pour autant "une ligne de moteur couverte" et faussait la métrique CDC.
+[tool.coverage.run]
+omit = [
+    "*/test_*.py",
+    "*/tests/*",
+]
+
+# --- Objectif de couverture (exigence du DoD projet : >= 75% sur les moteurs) ---
+[tool.coverage.report]
+fail_under = 75
+# Les blocs de démonstration en CLI (python -m module) ne sont pas le "moteur" au
+# sens du DoD -- ils servent à un usage manuel ponctuel, pas à la logique métier
+# testée par le DoD. On les exclut explicitement plutôt que d'écrire des tests
+# qui ne feraient qu'invoquer un print() sans valeur de vérification réelle.
+exclude_lines = [
+    "if __name__ == .__main__.:",
+]

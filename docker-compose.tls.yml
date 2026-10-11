@@ -1,0 +1,52 @@
+# ============================================================================
+# Variante TLS (exigence CDC non-fonctionnelle : TLS).
+#
+# L'API n'est PAS publiée directement : seul Caddy expose 80/443 et relaie en
+# HTTPS vers piste-quant sur le réseau Docker interne.
+#
+# Usage : docker compose -f docker-compose.tls.yml up --build
+#         DINIKA_DOMAINE=quant.exemple.mg docker compose -f docker-compose.tls.yml up --build
+#
+# STATUT : configuration validée structurellement par les tests du dépôt
+# (tests/test_deploiement_tls.py) mais NON exécutée sous Docker à ce jour.
+# ============================================================================
+
+services:
+  piste-quant:
+    build: .
+    container_name: dinika-piste-quant
+    restart: unless-stopped   # A3
+    expose:
+      - "8002"          # visible du réseau interne uniquement, jamais publié sur l'hôte
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-dev}
+      - PISTE_DATA_API_URL=${PISTE_DATA_API_URL:-http://piste-data:8001}
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - reseau-dinika
+
+  proxy-tls:
+    image: caddy:2
+    container_name: dinika-proxy-tls
+    restart: unless-stopped   # A3
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DINIKA_DOMAINE=${DINIKA_DOMAINE:-localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      piste-quant:
+        condition: service_healthy   # attend le HEALTHCHECK du Dockerfile, pas juste "démarré"
+    networks:
+      - reseau-dinika
+
+volumes:
+  caddy_data:
+
+networks:
+  reseau-dinika:
+    driver: bridge

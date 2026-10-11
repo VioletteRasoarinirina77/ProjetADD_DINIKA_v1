@@ -1,0 +1,2 @@
+timestamp,source,instrument_id,contract_instrument_id,open,high,low,close,volume
+2026-09-07 00:00:00+00:00,databento,ES,123456,,6520.00,6480.00,6510.00,100000

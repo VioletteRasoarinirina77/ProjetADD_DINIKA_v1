@@ -1,0 +1,21 @@
+{
+  "dataset_version": "1.0",
+  "definition": "Calendar intervals greater than 3 days between consecutive available timestamps. These gaps are not automatically classified as data errors.",
+  "gaps": [
+    {
+      "previous_timestamp": "2014-06-11 00:00:00+00:00",
+      "next_timestamp": "2014-06-15 00:00:00+00:00",
+      "calendar_gap_days": 4.0
+    },
+    {
+      "previous_timestamp": "2014-09-22 00:00:00+00:00",
+      "next_timestamp": "2014-09-26 00:00:00+00:00",
+      "calendar_gap_days": 4.0
+    },
+    {
+      "previous_timestamp": "2020-12-30 00:00:00+00:00",
+      "next_timestamp": "2021-01-03 00:00:00+00:00",
+      "calendar_gap_days": 4.0
+    }
+  ]
+}

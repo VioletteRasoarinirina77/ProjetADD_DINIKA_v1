@@ -1,0 +1,18 @@
+{
+  "dataset_name": "ES_quant_daily_v1.0.csv",
+  "dataset_version": "1.0",
+  "instrument": "ES",
+  "frequency": "daily",
+  "timezone": "UTC",
+  "rows": 4453,
+  "columns": 36,
+  "start_timestamp": "2012-02-29 00:00:00+00:00",
+  "end_timestamp": "2026-09-13 00:00:00+00:00",
+  "source": "Databento",
+  "databento_dataset": "GLBX.MDP3",
+  "continuous_symbol": "ES.v.0",
+  "sha256": "23af73a8a6160b45ead19c53503bf5ef56b1a010a63535297eecbc4b1dbb83ac",
+  "frozen": true,
+  "purpose": "Reproduction of Quant and thesis results",
+  "modification_policy": "Do not modify v1.0. Create a new dataset version for any change."
+}

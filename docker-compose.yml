@@ -1,0 +1,59 @@
+# ============================================================================
+# Assemblage multi-services DINIKA — à utiliser pour répéter l'intégration
+# AVANT le jour J (S8-S9), pas le découvrir ce jour-là.
+#
+# Objectif : les problèmes de réseau, de ports, de variables d'environnement
+# entre conteneurs sont souvent la VRAIE cause d'un "choc d'intégration" —
+# pas la logique métier elle-même. Ce fichier permet de les détecter tôt.
+#
+# ÉTAT ACTUEL : seule piste-quant est un vrai service. piste-data et piste-ia
+# sont des PLACEHOLDERS commentés, à décommenter et pointer vers les vrais
+# Dockerfile de Harimamy et Oly dès qu'ils existent.
+#
+# Usage : docker compose up --build
+# ============================================================================
+
+services:
+  piste-quant:
+    build: .
+    container_name: dinika-piste-quant
+    restart: unless-stopped   # A3 : redémarre seul après un crash ou un arrêt du démon Docker
+    ports:
+      - "8002:8002"
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-dev}   # dev = fixtures | pack = pack gelé ES v1.0 | prod = API Data
+      - PISTE_DATA_API_URL=${PISTE_DATA_API_URL:-http://piste-data:8001}
+    volumes:
+      - ./logs:/app/logs   # journal d'audit consultable depuis l'hôte, pas perdu au redémarrage du conteneur
+    networks:
+      - reseau-dinika
+
+  # ------------------------------------------------------------------------
+  # PLACEHOLDER — à activer dès que Harimamy a un Dockerfile pour D1.
+  # Le nom de service "piste-data" doit rester identique : c'est lui que
+  # PISTE_DATA_API_URL référence ci-dessus (résolution DNS interne à Docker).
+  # ------------------------------------------------------------------------
+  # piste-data:
+  #   build: ../dinika-piste-data
+  #   container_name: dinika-piste-data
+  #   ports:
+  #     - "8001:8001"
+  #   networks:
+  #     - reseau-dinika
+
+  # ------------------------------------------------------------------------
+  # PLACEHOLDER — à activer dès qu'Oly a un Dockerfile pour D5/D6.
+  # ------------------------------------------------------------------------
+  # piste-ia:
+  #   build: ../dinika-piste-ia
+  #   container_name: dinika-piste-ia
+  #   ports:
+  #     - "8003:8003"
+  #   environment:
+  #     - PISTE_QUANT_API_URL=http://piste-quant:8002
+  #   networks:
+  #     - reseau-dinika
+
+networks:
+  reseau-dinika:
+    driver: bridge
