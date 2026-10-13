@@ -6,6 +6,8 @@ de trading de l'ORCHESTRATION du walk-forward. walk_forward.py réexporte
 """
 
 import pandas as pd
+# Colonne portant le signal calculé UNE FOIS sur la série continue (voir ajouter_signaux).
+COLONNE_SIGNAL_ENTREE = "signal_entree"
 
 
 def generer_signaux_entree(df: pd.DataFrame) -> pd.Series:
@@ -27,3 +29,21 @@ def generer_signaux_entree(df: pd.DataFrame) -> pd.Series:
     au_dessus_precedent = au_dessus.shift(1, fill_value=False)
 
     return au_dessus & (~au_dessus_precedent)
+
+
+def ajouter_signaux(df: pd.DataFrame) -> pd.DataFrame:
+    """Ajoute la colonne ``signal_entree`` calculée sur la série CONTINUE.
+
+    Pourquoi : appliquée à une tranche (fenêtre train ou test), ``generer_signaux_entree`` ne
+    connaît pas la bougie précédant la tranche. Sa première bougie est donc traitée comme si le
+    Close « précédent » était sous la SMA : si le prix est déjà au-dessus de la SMA, un croisement
+    inexistant est déclaré. Sur le PACK ES (fenêtres 250/60), 47 des 70 fenêtres test démarraient
+    ainsi sur un faux signal.
+
+    Calculer le signal une seule fois sur toute la série, puis découper, supprime ce défaut sans
+    aucune fuite d'information : le signal en t n'utilise que des données jusqu'à t (test
+    ``test_le_signal_a_l_instant_t_ne_depend_pas_du_futur``).
+    """
+    resultat = df.copy()
+    resultat[COLONNE_SIGNAL_ENTREE] = generer_signaux_entree(df)
+    return resultat

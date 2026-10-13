@@ -36,7 +36,7 @@ from backtest.simulator import simuler_trades
 from config.instruments import obtenir_config, resoudre_capital_virtuel
 from contracts.schemas import Bougie, ValidationBacktest
 from indicators.technical import ajouter_indicateurs, bougies_vers_dataframe
-from strategy.rules import generer_signaux_entree
+from strategy.rules import ajouter_signaux, generer_signaux_entree
 
 # Noms réexportés : `simuler_trades`, `calculer_metriques` et `generer_signaux_entree`
 # restent importables depuis ce module (utilisés par paper_trading/ et les tests).
@@ -131,16 +131,12 @@ def calibrer_multiplicateur_atr(
     meilleur_sharpe = -float("inf")
     multiplicateur = obtenir_config(instrument_id).multiplicateur_contrat
 
-
-    signaux_train = generer_signaux_entree(train)
-
     for k_candidat in CANDIDATS_MULTIPLICATEUR_ATR:
         trades_candidat = simuler_trades(
             train,
             instrument_id,
             capital_virtuel,
             k_candidat,
-            signaux_entree=signaux_train,
         )
 
         metriques_candidat = calculer_metriques(
@@ -196,7 +192,7 @@ def walk_forward_backtest(
 
         1. validation des paramètres ;
         2. conversion des bougies en DataFrame ;
-        3. calcul des indicateurs D2 ;
+        3. calcul des indicateurs D2 puis du signal d'entrée (série continue) ;
         4. découpage en fenêtres TRAIN/TEST ;
         5. calibration du multiplicateur ATR sur TRAIN ;
         6. application du multiplicateur calibré sur TEST ;
@@ -212,9 +208,13 @@ def walk_forward_backtest(
         capital_virtuel,
     )
 
-    df = ajouter_indicateurs(
-        bougies_vers_dataframe(bougies),
-        instrument_id,
+    # Indicateurs D2 PUIS signal d'entrée, tous deux calculés une seule fois sur la série continue :
+    # les fenêtres train/test héritent des colonnes et ne recalculent rien à leurs bords.
+    df = ajouter_signaux(
+        ajouter_indicateurs(
+            bougies_vers_dataframe(bougies),
+            instrument_id,
+        )
     )
 
     fenetres = decouper_walk_forward(

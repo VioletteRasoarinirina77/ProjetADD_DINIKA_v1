@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field
 
 from config.instruments import obtenir_config
 from contracts.schemas import Bougie, IndicateursTechniques
+from indicators.conventions import observations_requises, verifier_periodes_contrat
 
 
 class EtatIndicateurs(BaseModel):
@@ -90,6 +91,8 @@ def mettre_a_jour(
 
     config = obtenir_config(bougie.instrument_id)
     p = config.indicateurs
+    verifier_periodes_contrat(p)
+    requises = observations_requises(p)
 
     nouvel_etat = etat.model_copy(deep=True)
     nouvel_etat.nb_bougies_vues += 1
@@ -121,7 +124,7 @@ def mettre_a_jour(
 
     ema = (
         nouvel_etat.ema_20
-        if nouvel_etat.nb_bougies_vues >= p.periode_ema
+        if nouvel_etat.nb_bougies_vues >= requises["ema_20"]
         else None
     )
 
@@ -152,20 +155,18 @@ def mettre_a_jour(
         p.macd_signal,
     )
 
-    historique_macd_suffisant = (
-        nouvel_etat.nb_bougies_vues
-        >= p.macd_lente + p.macd_signal
-    )
 
+    # Chauffe alignée sur le batch (conventions.py) : la ligne MACD apparaît avec l'EMA lente,
+    # sa ligne de signal quelques bougies plus tard.
     macd = (
         macd_brut
-        if historique_macd_suffisant
+        if nouvel_etat.nb_bougies_vues >= requises["macd"]
         else None
     )
 
     macd_signal = (
         nouvel_etat.macd_signal_ema9
-        if historique_macd_suffisant
+        if nouvel_etat.nb_bougies_vues >= requises["macd_signal"]
         else None
     )
 
@@ -196,7 +197,7 @@ def mettre_a_jour(
             p.periode_rsi,
         )
 
-        if nouvel_etat.nb_bougies_vues > p.periode_rsi:
+        if nouvel_etat.nb_bougies_vues >= requises["rsi_14"]:
             if nouvel_etat.moyenne_pertes == 0:
                 rsi = 100.0
             else:
@@ -234,7 +235,7 @@ def mettre_a_jour(
             p.periode_atr,
         )
 
-        if nouvel_etat.nb_bougies_vues > p.periode_atr:
+        if nouvel_etat.nb_bougies_vues >= requises["atr_14"]:
             atr = nouvel_etat.atr_14
 
     # ------------------------------------------------------------------

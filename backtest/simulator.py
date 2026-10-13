@@ -11,14 +11,15 @@ capital, seule la taille change. La courbe d'equity et les métriques de risque 
 
 from __future__ import annotations
 
+import math
+
 import pandas as pd
 
 from config.instruments import obtenir_config, resoudre_capital_virtuel
 from risk.position_sizing import calculer_risque
-from strategy.rules import generer_signaux_entree
+from strategy.rules import COLONNE_SIGNAL_ENTREE, generer_signaux_entree
 
 __all__ = ["generer_signaux_entree", "simuler_trades"]
-
 
 
 def simuler_trades(
@@ -26,7 +27,6 @@ def simuler_trades(
     instrument_id: str,
     capital_virtuel: float | None = None,
     multiplicateur_atr_stop_override: float | None = None,
-    signaux_entree: pd.Series | None = None,
 ) -> list[dict]:
     """Simule les trades sur un DataFrame déjà enrichi des indicateurs.
 
@@ -37,18 +37,33 @@ def simuler_trades(
         - SL/TP calculés une seule fois à l'entrée ;
         - coût de transaction appliqué à la sortie ;
         - si SL et TP sont touchés sur la même bougie, le SL est retenu
-          comme hypothèse conservatrice.
+          comme hypothèse conservatrice ;
+        - gap baissier sous le stop : sortie à l'Open de la bougie (jamais au prix du stop non
+          coté) ; take-profit toujours exécuté au prix du take-profit (pas de gain de gap) ;
+        - le signal est lu dans la colonne ``signal_entree`` (série continue) lorsqu'elle existe.
 
     Remarque :
         Une position encore ouverte à la fin du DataFrame n'est pas
         ajoutée à la liste des trades. Ce choix doit être documenté
         et validé par l'encadreur.
     """
-    entrees = (
-generer_signaux_entree(df)
-if signaux_entree is None
-else signaux_entree
-)
+    # Signal calculé sur la série CONTINUE et transporté par la colonne ``signal_entree`` (D3, voir
+    # strategy/rules.ajouter_signaux). Repli : un DataFrame fourni sans cette colonne doit être une
+    # série complète, jamais une tranche (sinon la première bougie porte un faux croisement).
+    if COLONNE_SIGNAL_ENTREE in df.columns:
+        serie_entrees = df[COLONNE_SIGNAL_ENTREE].astype(bool)
+    else:
+        serie_entrees = generer_signaux_entree(df)
+
+    # Colonnes lues UNE fois sous forme de tableaux numpy : l'accès ligne par ligne (`df.iloc[i]`)
+    # coûtait ~94 % du temps d'un backtest (22 000 extractions de ligne par synthèse D7). Les valeurs
+    # et les trades produits sont strictement identiques (voir tests/backtest/test_simulateur_perf.py).
+    entrees = serie_entrees.to_numpy(dtype=bool)
+    ouvertures = df["open"].to_numpy(dtype=float)
+    plus_hauts = df["high"].to_numpy(dtype=float)
+    plus_bas = df["low"].to_numpy(dtype=float)
+    atrs = df["atr_14"].to_numpy(dtype=float)
+    horodatages = df.index
 
     config = obtenir_config(instrument_id)
     cout_transaction = config.spread_points
@@ -68,19 +83,16 @@ else signaux_entree
     # On s'arrête à len(df) - 1 car l'entrée d'un signal situé
     # sur la dernière bougie nécessiterait une bougie t+1.
     for i in range(len(df) - 1):
-        ligne = df.iloc[i]
-        ligne_suivante = df.iloc[i + 1]
-
         # ---------------------------------------------------------
         # Entrée
         # ---------------------------------------------------------
         if (
             not en_position
-            and bool(entrees.iloc[i])
-            and not pd.isna(ligne["atr_14"])
+            and entrees[i]
+            and not math.isnan(atrs[i])
         ):
-            prix_entree = float(ligne_suivante["open"])
-            entree_ts = df.index[i + 1]
+            prix_entree = float(ouvertures[i + 1])
+            entree_ts = horodatages[i + 1]
 
             # Dimensionné sur le capital COURANT (capital initial + PnL déjà réalisés), pas sur le
             # capital de départ figé : c'était le bug -- `capital_virtuel` (le paramètre d'entrée,
@@ -88,7 +100,7 @@ else signaux_entree
             # `+= pnl_dollars` à chaque trade mais n'était en fait jamais lu (voir D-012).
             risque = calculer_risque(
                 prix_entree,
-                float(ligne["atr_14"]),
+                float(atrs[i]),
                 instrument_id,
                 capital_courant,
                 multiplicateur_atr_stop_override=(
@@ -119,18 +131,25 @@ else signaux_entree
             assert prix_entree is not None
             assert entree_ts is not None
 
-            touche_stop = ligne_suivante["low"] <= stop_loss
-            touche_profit = ligne_suivante["high"] >= take_profit
+            touche_stop = plus_bas[i + 1] <= stop_loss
+            touche_profit = plus_hauts[i + 1] >= take_profit
 
             if touche_stop or touche_profit:
                 # Hypothèse conservatrice :
                 # si SL et TP sont touchés sur la même bougie,
                 # on retient le stop-loss.
-                prix_sortie = (
-                    stop_loss
-                    if touche_stop
-                    else take_profit
-                )
+                if touche_stop:
+                    # Gap baissier : si la bougie OUVRE déjà sous le stop, l'ordre stop devient un
+                    # ordre au marché et s'exécute à l'Open, pas au prix du stop (qui n'a jamais
+                    # été coté). Sinon, exécution au prix du stop.
+                    prix_sortie = min(
+                        stop_loss,
+                        float(ouvertures[i + 1]),
+                    )
+                else:
+                    # Take-profit toujours exécuté AU prix du take-profit, même si la bougie ouvre
+                    # au-dessus : hypothèse prudente, on ne comptabilise pas de gain de gap.
+                    prix_sortie = take_profit
 
                 pnl_points = (
                     prix_sortie
@@ -143,7 +162,7 @@ else signaux_entree
                 trades.append(
                     {
                         "entree_ts": entree_ts,
-                        "sortie_ts": df.index[i + 1],
+                        "sortie_ts": horodatages[i + 1],
                         "prix_entree": prix_entree,
                         "prix_sortie": prix_sortie,
                         "pnl_points": pnl_points,

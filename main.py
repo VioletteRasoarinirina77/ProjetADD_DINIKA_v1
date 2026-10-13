@@ -43,6 +43,7 @@ from data.repository import DataRepository
 from indicators.incremental import EtatIndicateurs, mettre_a_jour
 from integration.pack_repository import ErreurIntegritePack, PackDataRepository
 from integration.reconciliation import AnomalieReconciliation, comparer_sources
+from integration.source_pack import PACK_DIR_DEFAUT, creer_repository_pack  # noqa: F401  (PACK_DIR_DEFAUT réexporté)
 from paper_trading.portfolio import (
     PLAFOND_EXPOSITION_RATIO_DEFAUT,
     ResultatPortefeuille,

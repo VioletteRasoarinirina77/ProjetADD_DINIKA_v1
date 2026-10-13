@@ -4,11 +4,13 @@ Ce module ne contient que la logique d'indicateurs et de transformation
 des bougies en DataFrame. La gestion du risque D4 est dans ``risk/``.
 """
 
+import numpy as np
 import pandas as pd
 import pandas_ta as ta
 
 from config.instruments import obtenir_config
 from contracts.schemas import Bougie
+from indicators.conventions import observations_requises, verifier_periodes_contrat
 
 
 def bougies_vers_dataframe(
@@ -52,6 +54,7 @@ def ajouter_indicateurs(
     """
     config = obtenir_config(instrument_id)
     parametres = config.indicateurs
+    verifier_periodes_contrat(parametres)
 
     df = df.copy()
 
@@ -85,8 +88,8 @@ def ajouter_indicateurs(
         df["macd"] = macd.iloc[:, 0]
         df["macd_signal"] = macd.iloc[:, 2]
     else:
-        df["macd"] = None
-        df["macd_signal"] = None
+        df["macd"] = np.nan
+        df["macd_signal"] = np.nan
 
     # ATR
     df["atr_14"] = ta.atr(
@@ -95,5 +98,10 @@ def ajouter_indicateurs(
         df["close"],
         length=parametres.periode_atr,
     )
+
+    # Chauffe : même règle que le calcul incrémental (voir conventions.py).
+    rang = np.arange(len(df))
+    for colonne, observations in observations_requises(parametres).items():
+        df.loc[rang < observations - 1, colonne] = np.nan
 
     return df

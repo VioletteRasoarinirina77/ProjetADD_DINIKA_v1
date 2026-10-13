@@ -13,7 +13,7 @@ volontairement simple.
 """
 
 from __future__ import annotations
-
+import math
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -27,6 +27,7 @@ SORTIE_PAR_DEFAUT = RACINE / "docs" / "rapport_backtest_ES_v1.0.md"
 
 # (taille_train, taille_test) en nombre de bougies quotidiennes.
 CONFIGURATIONS_PAR_DEFAUT = [(60, 20), (250, 60), (500, 120)]
+
 
 
 def generer_rapport(
@@ -49,7 +50,8 @@ def generer_rapport(
     if dernieres_bougies is not None:
         bougies = bougies[-dernieres_bougies:]
     capital_affiche = resoudre_capital_virtuel(instrument_id, capital_virtuel)
-
+    annees = max((bougies[-1].timestamp - bougies[0].timestamp).days / 365.25, 1 / 365.25)
+    
     lignes = [
         f"# Rapport de backtest walk-forward — {instrument_id} (D3)",
         "",
@@ -79,6 +81,7 @@ def generer_rapport(
         else:
             lignes.append(f"| {taille_train} | {taille_test} | 0 | n/a | n/a | n/a |")
 
+
     lignes += [
         "",
         "## Lecture honnête",
@@ -88,6 +91,18 @@ def generer_rapport(
         "- Drawdown max : chute maximale de la courbe d'**equity en dollars** (capital réel, taille en "
         "contrats entiers, coûts de transaction), en proportion du sommet précédent (D-009).",
         "- Position ouverte en fin de fenêtre : non comptée (D-007, à valider).",
+        
+        "- Signal d'entrée : calculé UNE fois sur la série continue puis transporté dans chaque fenêtre "
+        "(D-016) ; aucun croisement fictif n'est créé à la première bougie d'une fenêtre train ou test.",
+        "- Sortie au stop : au prix du stop, ou à l'Open de la bougie si elle ouvre déjà sous le stop (gap, "
+        "D-017) ; take-profit toujours au prix du take-profit (aucun gain de gap comptabilisé).",
+        "- Prix : série continue du PACK, ajustée par ratio (`cumulative_adjustment_factor`). Les écarts "
+        "de prix, donc les P&L en dollars (points x 50), des années anciennes sont exprimés en points "
+        "ajustés, sans reconversion en points bruts (D-018).",
+        f"- Précision statistique : sur {annees:.1f} ans, l'erreur-type approximative du Sharpe annuel est "
+        f"d'environ {1 / math.sqrt(annees):.2f}. Un Sharpe inférieur à ce niveau est indiscernable de zéro.",
+
+
         "- Taux de réussite : calculé sur le PnL en points (indépendant du capital et de la taille).",
         "- Ces chiffres valident le protocole et l'outillage. La stratégie de référence est volontairement "
         "simple ; aucun de ces résultats n'est une promesse de gain (outil d'aide à la décision).",

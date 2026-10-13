@@ -35,6 +35,8 @@ from config.instruments import obtenir_config, resoudre_capital_virtuel
 from contracts.schemas import Bougie
 from indicators.technical import ajouter_indicateurs, bougies_vers_dataframe
 from risk.position_sizing import calculer_risque
+from strategy.rules import ajouter_signaux
+
 
 CAPITAL_INITIAL_DEFAUT = 10_000.0
 TAILLE_HORS_ECHANTILLON_DEFAUT = 30  # nb de bougies les plus récentes, réservées à D8
@@ -172,11 +174,13 @@ def simuler_paper_trading_hors_echantillon(
         bougies_historique_complet, taille_hors_echantillon
     )
 
-    # Les indicateurs ont besoin de tout l'historique pour "chauffer" (SMA-20, MACD...),
-    # mais restent causaux -- aucune fuite d'info du futur, même en gardant le contexte.
-    df_complet = ajouter_indicateurs(
-    bougies_vers_dataframe(bougies_historique_complet),
-    instrument_id,
+    # Signal d'entrée calculé sur la série continue : la zone hors-échantillon ne crée aucun faux
+    # croisement à sa première bougie (même règle que D3).
+    df_complet = ajouter_signaux(
+        ajouter_indicateurs(
+            bougies_vers_dataframe(bougies_historique_complet),
+            instrument_id,
+        )
     )
     debut_hors_echantillon = zone_hors_echantillon[0].timestamp
     df_validation = df_complet.loc[df_complet.index < debut_hors_echantillon]
